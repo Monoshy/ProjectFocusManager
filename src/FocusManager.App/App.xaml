@@ -1,0 +1,25 @@
+<Application x:Class="FocusManager.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                    顺序不能换，后面的字典要用前面的东西：
+
+                    第 0 个：主题（浅色或深色）。程序启动时可以整本替换，
+                             ThemeManager 就是替换这一本。
+                    第 1 个：尺寸令牌（字号、圆角、间距），和主题无关。
+                    第 2 个：图标路径。
+                    第 3 个：控件样式，用 DynamicResource 引用第 0 本的颜色、
+                             用 StaticResource 引用第 1、2 本的东西。
+                -->
+                <ResourceDictionary Source="Themes/Light.xaml" />
+                <ResourceDictionary Source="Themes/Tokens.xaml" />
+                <ResourceDictionary Source="Themes/Icons.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,156 @@
+<UserControl x:Class="FocusManager.App.Views.ApplicationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{DynamicResource WindowBackgroundBrush}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid MaxWidth="{StaticResource ContentMaxWidth}"
+              Margin="32,36,32,40"
+              HorizontalAlignment="Stretch">
+
+            <StackPanel>
+
+                <TextBlock Text="应用管理" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Text="登记学习时会用到的软件。开始专注时只放行你选的那一个，再加上 Obsidian 和内置 ChatGPT。"
+                           Style="{StaticResource PageSubtitleTextStyle}"
+                           TextWrapping="Wrap" />
+
+                <StackPanel Orientation="Horizontal" Margin="0,22,0,0">
+                    <Button x:Name="AddFromFileButton"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="OnAddFromFileClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlus}"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.8"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Width="15" Height="15"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="选择程序文件添加" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="AddFromRunningButton"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="10,0,0,0"
+                            Click="OnAddFromRunningClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconApps}"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.6"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  Width="15" Height="15"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="从正在运行的程序中添加" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- 空列表提示 -->
+                <Border Margin="0,18,0,0"
+                        Padding="20"
+                        CornerRadius="{StaticResource RadiusCard}"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                        BorderThickness="1"
+                        Visibility="{Binding HasNoApplications, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="还没有登记任何学习软件。点上面的按钮加一个。"
+                               Style="{StaticResource SecondaryTextStyle}" />
+                </Border>
+
+                <!-- 应用列表 -->
+                <Border Margin="0,18,0,0"
+                        CornerRadius="{StaticResource RadiusCard}"
+                        Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                        BorderThickness="1"
+                        Padding="0"
+                        Visibility="{Binding HasApplications, Converter={StaticResource BoolToVisibility}}">
+                    <ItemsControl ItemsSource="{Binding Applications}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
+                                    <Grid Margin="20,14,16,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontSize="{StaticResource FontSizeSection}"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                                            <TextBlock Text="{Binding ProcessText}"
+                                                       Margin="0,3,0,0"
+                                                       Style="{StaticResource MutedTextStyle}" />
+
+                                            <TextBlock Text="{Binding PathText}"
+                                                       Margin="0,1,0,0"
+                                                       Style="{StaticResource MutedTextStyle}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding HasPath, Converter={StaticResource BoolToVisibility}}" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding StatusText}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="12,0,14,0"
+                                                   FontSize="{StaticResource FontSizeCaption}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPathBroken}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource GhostButtonStyle}"
+                                                    Content="修改"
+                                                    Padding="10,0"
+                                                    Height="30"
+                                                    Click="OnEditClick" />
+
+                                            <Button Style="{StaticResource GhostButtonStyle}"
+                                                    Content="{Binding ToggleText}"
+                                                    Padding="10,0"
+                                                    Height="30"
+                                                    Margin="4,0,0,0"
+                                                    Click="OnToggleClick" />
+
+                                            <Button Style="{StaticResource GhostButtonStyle}"
+                                                    Content="删除"
+                                                    Padding="10,0"
+                                                    Height="30"
+                                                    Margin="4,0,0,0"
+                                                    Foreground="{DynamicResource DangerBrush}"
+                                                    Click="OnDeleteClick" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <TextBlock Margin="0,14,0,0"
+                           Style="{StaticResource MutedTextStyle}"
+                           TextWrapping="Wrap"
+                           Text="说明：这里登记过的软件不会自动获得使用权限。每轮专注只放行你在专注页选的那一个，再加上 Obsidian 和内置 ChatGPT。" />
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

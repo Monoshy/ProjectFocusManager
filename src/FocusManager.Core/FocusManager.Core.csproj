@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows 专用：后续需要调用 Win32 API 识别前台窗口 -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>FocusManager.Core</RootNamespace>
+    <AssemblyName>FocusManager.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 本地 SQLite 数据库驱动（微软官方，MIT） -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+  </ItemGroup>
+
+</Project>

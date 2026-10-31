@@ -1,0 +1,162 @@
+<UserControl x:Class="FocusManager.App.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="840">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid MaxWidth="{StaticResource ContentMaxWidth}" Margin="32,36,32,40" HorizontalAlignment="Stretch">
+            <StackPanel>
+
+                <TextBlock Text="设置" Style="{StaticResource PageTitleTextStyle}" />
+                <TextBlock Style="{StaticResource PageSubtitleTextStyle}" Margin="0,8,0,28"
+                           Text="这里的东西不多，都是和「用起来舒不舒服」有关的小事。" />
+
+                <!-- ============ 外观 ============ -->
+                <TextBlock Text="外观" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,24">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
+                            <TextBlock Text="主题" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0"
+                                       Text="深色模式晚上看着不刺眼，白天用浅色更清楚。选好之后会记住。" />
+                        </StackPanel>
+
+                        <ComboBox x:Name="ThemeComboBox" Grid.Column="1" Width="140"
+                                  Style="{StaticResource AppComboBoxStyle}"
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="OnThemeSelectionChanged" />
+                    </Grid>
+                </Border>
+
+                <!-- ============ 专注提醒 ============ -->
+                <TextBlock Text="专注提醒" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,24">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
+                            <TextBlock Text="暂停多久之后提醒我回来" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Text="暂停超过这个时间，会弹一个小窗口问你要不要回来。只提醒一次，不会自动继续计时，也不会自动结束这一轮。" />
+                        </StackPanel>
+
+                        <ComboBox x:Name="PauseReminderComboBox" Grid.Column="1" Width="140"
+                                  Style="{StaticResource AppComboBoxStyle}"
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="OnPauseReminderSelectionChanged" />
+                    </Grid>
+                </Border>
+
+                <!-- ============ 关闭窗口时 ============ -->
+                <TextBlock Text="关闭窗口时" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,24">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
+                            <TextBlock Text="点右上角关闭按钮时" Style="{StaticResource BodyTextStyle}" />
+                            <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Text="选「每次询问」的话，关闭时会弹一个小窗口让你当场决定。最小化到托盘不会停掉计时。" />
+                        </StackPanel>
+
+                        <ComboBox x:Name="CloseBehaviorComboBox" Grid.Column="1" Width="150"
+                                  Style="{StaticResource AppComboBoxStyle}"
+                                  VerticalAlignment="Center"
+                                  SelectionChanged="OnCloseBehaviorSelectionChanged" />
+                    </Grid>
+                </Border>
+
+                <!-- ============ 数据位置 ============ -->
+                <TextBlock Text="数据保存位置" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,24">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedTextStyle}"
+                                   Text="所有项目、专注记录、心得都只存在这台电脑上，不会上传到任何地方。"
+                                   TextWrapping="Wrap" />
+
+                        <TextBox x:Name="DataDirectoryBox" Margin="0,12,0,0"
+                                 Style="{StaticResource AppTextAreaStyle}"
+                                 IsReadOnly="True"
+                                 MinHeight="58"
+                                 TextWrapping="Wrap" />
+
+                        <Button Style="{StaticResource SecondaryButtonStyle}"
+                                HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Click="OnOpenDataFolderClick">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconFolder}"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round"
+                                      Width="15" Height="15"
+                                      Stretch="Uniform"
+                                      VerticalAlignment="Center" />
+                                <TextBlock Text="打开这个文件夹" Margin="7,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ 数据备份 ============ -->
+                <TextBlock Text="数据备份" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,24">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedTextStyle}"
+                                   Text="备份是一份完整的数据库副本，放在数据文件夹里的 backups 子目录。想手动留一份存档时点一下就行。"
+                                   TextWrapping="Wrap" />
+
+                        <Button Style="{StaticResource PrimaryButtonStyle}"
+                                HorizontalAlignment="Left" Margin="0,14,0,0"
+                                Click="OnBackupClick">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconBackup}"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round"
+                                      Width="15" Height="15"
+                                      Stretch="Uniform"
+                                      VerticalAlignment="Center" />
+                                <TextBlock Text="立即备份一份" Margin="7,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <TextBlock x:Name="BackupResultText" Style="{StaticResource MutedTextStyle}"
+                                   Margin="0,12,0,0" Visibility="Collapsed" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ 关于 ============ -->
+                <TextBlock Text="关于" Style="{StaticResource SectionTitleTextStyle}" Margin="0,0,0,10" />
+
+                <Border Style="{StaticResource CardBorderStyle}">
+                    <StackPanel>
+                        <TextBlock Text="Project Focus Manager" Style="{StaticResource BodyTextStyle}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock x:Name="VersionText" Style="{StaticResource MutedTextStyle}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,12,0,0" TextWrapping="Wrap"
+                                   Text="一个完全离线的本地工具：不需要账号，不联网同步，不读取你的聊天内容和键盘输入。" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

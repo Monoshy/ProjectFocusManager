@@ -1,0 +1,44 @@
+# 编译产物
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# 本地工具链（.NET SDK、NuGet 缓存、临时目录）——体积很大，不进版本库
+.tools/
+
+# 用户本地数据库、备份与日志，绝不提交
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+backups/
+local-data/
+logs/
+*.log
+
+# 构建与发布产物
+publish/
+artifacts/
+dist/
+*.nupkg
+*.snupkg
+Releases/
+
+# IDE / 编辑器
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# 系统文件
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 安装包签名与密钥（绝不提交）
+*.pfx
+*.snk
+secrets/

@@ -1,0 +1,67 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        浅色主题。
+        原则：页面是浅灰，卡片是纯白（卡片比页面"亮"才像浮起来），
+        强调色用低饱和的靛蓝，不用高饱和的亮蓝。
+    -->
+
+    <!-- ==================== 背景层次 ==================== -->
+    <!-- 页面底色：很浅的冷灰，比纯白柔和，长时间看不刺眼 -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F6F7F9" />
+
+    <!-- 卡片：纯白 -->
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
+
+    <!-- 次级表面：悬停、下拉列表 -->
+    <SolidColorBrush x:Key="SurfaceAltBrush" Color="#EFF1F4" />
+
+    <!-- 凹陷表面：只读框、分组底色 -->
+    <SolidColorBrush x:Key="SurfaceSunkenBrush" Color="#EAECF0" />
+
+    <!-- 左侧导航栏：和卡片一样用白色，靠一条分隔线跟内容区分开 -->
+    <SolidColorBrush x:Key="NavRailBrush" Color="#FFFFFF" />
+
+    <!-- ==================== 线条 ==================== -->
+    <SolidColorBrush x:Key="DividerBrush" Color="#E5E7EB" />
+    <!-- LineBrush 是改造前就在用的名字，保留下来，避免老代码引用不到 -->
+    <SolidColorBrush x:Key="LineBrush" Color="#E5E7EB" />
+    <SolidColorBrush x:Key="ControlBorderBrush" Color="#DFE2E7" />
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C9CDD4" />
+
+    <!-- ==================== 文字 ==================== -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1B1D21" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#5A6069" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#8A9099" />
+
+    <!-- ==================== 强调色（低饱和靛蓝） ==================== -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#4C63D2" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#3F55BD" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#364AA8" />
+    <!-- 淡强调底：导航选中、标签背景 -->
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#EEF0FC" />
+    <!-- 强调色底上的文字（浅色主题是白字） -->
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#FFFFFF" />
+
+    <!-- ==================== 状态色 ==================== -->
+    <SolidColorBrush x:Key="FocusBrush" Color="#2E9E6B" />
+    <SolidColorBrush x:Key="FocusSoftBrush" Color="#E8F6EF" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#2E9E6B" />
+    <SolidColorBrush x:Key="PauseBrush" Color="#C77B2B" />
+    <SolidColorBrush x:Key="PauseSoftBrush" Color="#FBF1E4" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#D14343" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#FBEAEA" />
+
+    <!-- ==================== 交互叠加层 ==================== -->
+    <!-- 悬停 / 按下的半透明遮罩，浅色主题用黑色低透明度 -->
+    <SolidColorBrush x:Key="HoverOverlayBrush" Color="#08000000" />
+    <SolidColorBrush x:Key="PressedOverlayBrush" Color="#14000000" />
+
+    <!-- ==================== 字体 ==================== -->
+    <!-- 中文优先用雅黑 UI，英文/数字回退 Segoe UI -->
+    <FontFamily x:Key="UiFontFamily">Microsoft YaHei UI, Segoe UI</FontFamily>
+    <!-- 计时数字用等宽字体，数字跳动时宽度不变 -->
+    <FontFamily x:Key="TimerFontFamily">Consolas, Microsoft YaHei UI</FontFamily>
+
+</ResourceDictionary>

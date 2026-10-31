@@ -1,0 +1,53 @@
+<Window x:Class="FocusManager.App.Views.Dialogs.AppNotRunningWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource DialogWindowStyle}"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}"
+        Icon="/Resources/app.ico"
+        Title="还没找到学习软件"
+        Width="460"
+        SizeToContent="Height">
+
+    <StackPanel Margin="26,22,26,22">
+        <TextBlock x:Name="TitleText"
+                   Text="先把学习软件打开"
+                   FontSize="17" FontWeight="SemiBold"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+        <Border Height="2" CornerRadius="1" Margin="0,10,0,0"
+                Background="{DynamicResource PauseBrush}" />
+
+        <TextBlock x:Name="MessageText"
+                   Margin="0,14,0,0"
+                   Style="{StaticResource BodyTextStyle}"
+                   TextWrapping="Wrap" />
+
+        <TextBlock Margin="0,12,0,0"
+                   Style="{StaticResource MutedTextStyle}"
+                   TextWrapping="Wrap"
+                   Text="程序不会替你启动它，也不会改动它的任何设置。打开之后点「我已打开，继续专注」，会再检查一次。" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button x:Name="LaterButton"
+                    Content="稍后再说"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    MinWidth="96"
+                    Margin="0,0,10,0"
+                    IsCancel="True" />
+            <Button x:Name="ForceResumeButton"
+                    Content="直接继续计时"
+                    Style="{StaticResource SecondaryButtonStyle}"
+                    MinWidth="112"
+                    Margin="0,0,10,0"
+                    Click="OnForceResumeClick" />
+            <Button x:Name="RetryButton"
+                    Content="我已打开，继续专注"
+                    Style="{StaticResource PrimaryButtonStyle}"
+                    MinWidth="140"
+                    IsDefault="True"
+                    Click="OnRetryClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -1,0 +1,233 @@
+<UserControl x:Class="FocusManager.App.Views.ProjectsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="840">
+
+    <Grid MaxWidth="900" Margin="32,36,32,40" HorizontalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ============ 左边：项目列表 ============ -->
+        <DockPanel Grid.Column="0" Margin="0,0,28,0">
+            <TextBlock DockPanel.Dock="Top" Text="项目记录" Style="{StaticResource PageTitleTextStyle}" />
+            <TextBlock DockPanel.Dock="Top" Style="{StaticResource MutedTextStyle}" Margin="0,6,0,16"
+                       Text="按创建时间排列。" />
+
+            <TextBlock DockPanel.Dock="Top" Style="{StaticResource MutedTextStyle}" Margin="0,0,0,10"
+                       Text="还没有项目。先去「专注」页新建一个吧。"
+                       Visibility="{Binding HasProjects, Converter={StaticResource InverseBoolToVisibility}}" />
+
+            <ListBox ItemsSource="{Binding Projects}"
+                     SelectedItem="{Binding SelectedProject, Mode=TwoWay}"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Margin" Value="0,0,0,4" />
+                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Root" Background="Transparent" CornerRadius="{StaticResource RadiusControl}"
+                                            Padding="0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border x:Name="Bar" Grid.Column="0" Background="Transparent"
+                                                    CornerRadius="3,0,0,3" />
+
+                                            <ContentPresenter Grid.Column="1" Margin="12,9,12,9"
+                                                              VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Root" Property="Background"
+                                                    Value="{DynamicResource SurfaceBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Root" Property="Background"
+                                                    Value="{DynamicResource SurfaceBrush}" />
+                                            <Setter TargetName="Bar" Property="Background"
+                                                    Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap"
+                                       FontSize="{StaticResource FontSizeBody}"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                            <TextBlock Text="{Binding TotalText}" Margin="0,3,0,0"
+                                       Style="{StaticResource MutedTextStyle}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- ============ 右边：选中项目的详情 ============ -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+
+                <!-- 项目名 + 删除按钮（重点突出项目名） -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding SelectedProject.Name}"
+                               FontSize="{StaticResource FontSizePageTitle}" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               TextWrapping="Wrap" />
+
+                    <Button Grid.Column="1"
+                            x:Name="DeleteProjectButton"
+                            Margin="16,4,0,0"
+                            VerticalAlignment="Top"
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            IsEnabled="{Binding HasSelection}"
+                            ToolTip="把这个项目和它的所有专注记录一起删掉"
+                            Click="OnDeleteProjectClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconStop}"
+                                  Width="14" Height="14" Stretch="Uniform"
+                                  Stroke="{DynamicResource DangerBrush}"
+                                  StrokeThickness="1.8"
+                                  VerticalAlignment="Center" />
+                            <TextBlock Text="删除这个项目" Margin="8,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource DangerBrush}" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- 累计时间（TotalText 本身已带"累计"前缀，不再重复写标签） -->
+                <TextBlock Text="{Binding SelectedProject.TotalText}"
+                           Margin="0,14,0,0"
+                           FontSize="30" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentBrush}" />
+
+                <TextBlock Text="{Binding SummaryText}" Style="{StaticResource SecondaryTextStyle}"
+                           Margin="0,10,0,0" TextWrapping="Wrap" />
+
+                <!-- 按天统计 -->
+                <TextBlock Text="每天专注了多少" Style="{StaticResource SectionTitleTextStyle}" Margin="0,30,0,0" />
+
+                <Border Style="{StaticResource CardBorderStyle}" Margin="0,12,0,0" Padding="0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource MutedTextStyle}" Margin="20,16,20,16"
+                                   Text="还没有专注记录。完成一轮专注后，这里就会出现每天的时长。"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding HasNoSessions, Converter={StaticResource BoolToVisibility}}" />
+
+                        <ItemsControl ItemsSource="{Binding DailyTotals}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderThickness="0,0,0,1"
+                                            BorderBrush="{DynamicResource DividerBrush}">
+                                        <Grid Margin="20,11,20,11">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="92" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" Text="{Binding DateText}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       VerticalAlignment="Center" />
+
+                                            <TextBlock Grid.Column="1" Text="{Binding DurationText}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       VerticalAlignment="Center" />
+
+                                            <TextBlock Grid.Column="2" Text="{Binding SessionCountText}"
+                                                       Style="{StaticResource MutedTextStyle}"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- 每次专注的记录 -->
+                <TextBlock Text="每次专注的记录" Style="{StaticResource SectionTitleTextStyle}" Margin="0,30,0,0" />
+
+                <ItemsControl ItemsSource="{Binding Sessions}" Margin="0,12,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardBorderStyle}" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="{Binding DateText}"
+                                                   Style="{StaticResource SecondaryTextStyle}"
+                                                   VerticalAlignment="Center" />
+
+                                        <TextBlock Grid.Column="1" Text="{Binding DurationText}"
+                                                   FontSize="{StaticResource FontSizeSection}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding PausedText}" Style="{StaticResource MutedTextStyle}"
+                                               Margin="0,6,0,0" />
+
+                                    <!--
+                                        这一轮做了什么。用只读 TextBox 而不是 TextBlock：
+                                        想复制下来贴到别处（笔记、聊天）时可以直接选中，
+                                        Ctrl+C、Ctrl+A、右键复制都能用，但改不了内容。
+                                    -->
+                                    <TextBox Text="{Binding ProgressText, Mode=OneWay}"
+                                             Style="{StaticResource ReadOnlyTextStyle}"
+                                             Margin="0,12,0,0" />
+
+                                    <Border Margin="0,12,0,0" Padding="12,10"
+                                            CornerRadius="{StaticResource RadiusControl}"
+                                            Background="{DynamicResource SurfaceAltBrush}"
+                                            Visibility="{Binding HasReflection, Converter={StaticResource BoolToVisibility}}">
+                                        <StackPanel>
+                                            <TextBlock Text="心得 / 还没解决的问题" Style="{StaticResource MutedTextStyle}" />
+                                            <TextBox Text="{Binding ReflectionText, Mode=OneWay}"
+                                                     Style="{StaticResource ReadOnlyTextStyle}"
+                                                     Foreground="{DynamicResource TextSecondaryBrush}"
+                                                     Margin="0,5,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

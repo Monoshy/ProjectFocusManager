@@ -1,0 +1,24 @@
+<Project>
+
+  <!-- 全解决方案共用的编译设置。改这里会同时影响所有项目。 -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>false</InvariantGlobalization>
+
+    <!-- 程序版本信息（以后打包时会被 Velopack 使用） -->
+    <Version>0.1.0</Version>
+    <Company>Project Focus Manager</Company>
+    <Product>Project Focus Manager</Product>
+    <Copyright>Copyright (c) 2026</Copyright>
+
+    <!-- 界面与提示统一使用简体中文 -->
+    <NeutralLanguage>zh-CN</NeutralLanguage>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+
+    <!-- 生成确定性输出，便于复现构建 -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+</Project>

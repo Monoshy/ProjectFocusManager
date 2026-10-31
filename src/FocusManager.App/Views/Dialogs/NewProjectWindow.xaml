@@ -1,0 +1,47 @@
+<Window x:Class="FocusManager.App.Views.Dialogs.NewProjectWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource DialogWindowStyle}"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Resources/app.ico"
+        Background="{DynamicResource SurfaceBrush}"
+        Title="新建项目"
+        Width="480"
+        SizeToContent="Height">
+
+    <StackPanel Margin="28,24,28,24">
+        <TextBlock Text="新建项目" FontSize="20" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+        <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,6,0,0" TextWrapping="Wrap"
+                   Text="例如：微观经济学——消费者理论、线性代数第三章、考研英语阅读。" />
+
+        <TextBlock Text="项目名称" Style="{StaticResource SectionTitleTextStyle}" Margin="0,20,0,0" />
+
+        <TextBox x:Name="NameBox"
+                 Style="{StaticResource AppTextBoxStyle}"
+                 Margin="0,8,0,0"
+                 MaxLength="200" />
+
+        <TextBlock Text="补充说明（可以不填）" Style="{StaticResource SectionTitleTextStyle}" Margin="0,18,0,0" />
+
+        <!-- 高度交给 AppTextAreaStyle：默认三四行，写多了自己长高，到十行左右开始滚动 -->
+        <TextBox x:Name="DescriptionBox"
+                 Style="{StaticResource AppTextAreaStyle}"
+                 Margin="0,8,0,0" />
+
+        <TextBlock x:Name="ErrorText"
+                   Style="{StaticResource MutedTextStyle}"
+                   Foreground="{DynamicResource DangerBrush}"
+                   Margin="0,10,0,0"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button x:Name="CancelButton" Content="取消" Style="{StaticResource SecondaryButtonStyle}"
+                    Margin="0,0,10,0" IsCancel="True" Click="OnCancelClick" />
+            <Button x:Name="CreateButton" Content="创建" Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True" Click="OnCreateClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

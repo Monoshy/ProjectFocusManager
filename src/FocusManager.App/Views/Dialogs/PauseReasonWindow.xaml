@@ -1,0 +1,59 @@
+<Window x:Class="FocusManager.App.Views.Dialogs.PauseReasonWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource DialogWindowStyle}"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Resources/app.ico"
+        Background="{DynamicResource SurfaceBrush}"
+        Title="暂停一下"
+        Width="460"
+        SizeToContent="Height">
+
+    <StackPanel Margin="28,24,28,24">
+        <TextBlock Text="这次暂停是因为什么？" FontSize="20" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+        <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,6,0,0" TextWrapping="Wrap"
+                   Text="记下原因，以后回看时能知道时间花在哪里。暂停的时间不算进专注时间。" />
+
+        <StackPanel Margin="0,18,0,0">
+            <RadioButton x:Name="ReasonWater" GroupName="Reason" Content="喝水 / 休息一下"
+                         Style="{StaticResource ChoiceRadioStyle}" Margin="0,0,0,8" Tag="喝水"
+                         Checked="OnPresetChecked" />
+            <RadioButton x:Name="ReasonErrand" GroupName="Reason" Content="临时有事"
+                         Style="{StaticResource ChoiceRadioStyle}" Margin="0,0,0,8" Tag="临时有事"
+                         Checked="OnPresetChecked" />
+            <RadioButton x:Name="ReasonLookup" GroupName="Reason" Content="查找资料"
+                         Style="{StaticResource ChoiceRadioStyle}" Margin="0,0,0,8" Tag="查找资料"
+                         Checked="OnPresetChecked" />
+            <RadioButton x:Name="ReasonOther" GroupName="Reason" Content="其他（自己写）"
+                         Style="{StaticResource ChoiceRadioStyle}" Tag="其他"
+                         Checked="OnOtherChecked" />
+        </StackPanel>
+
+        <!-- 只有选中「其他（自己写）」时才显示这个输入框，避免出现一个空框让人猜 -->
+        <!-- 暂停原因可能是一整句话，所以给多行框；这里比别处矮一些，别把对话框撑太高 -->
+        <TextBox x:Name="CustomReasonBox"
+                 Style="{StaticResource AppTextAreaStyle}"
+                 Margin="0,12,0,0"
+                 MinHeight="64"
+                 MaxHeight="120"
+                 MaxLength="200"
+                 Visibility="Collapsed"
+                 TextChanged="OnCustomReasonChanged" />
+
+        <TextBlock x:Name="ErrorText"
+                   Style="{StaticResource MutedTextStyle}"
+                   Foreground="{DynamicResource DangerBrush}"
+                   Margin="0,10,0,0"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button x:Name="CancelButton" Content="取消" Style="{StaticResource SecondaryButtonStyle}"
+                    Margin="0,0,10,0" IsCancel="True" Click="OnCancelClick" />
+            <Button x:Name="ConfirmButton" Content="开始暂停" Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True" Click="OnConfirmClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

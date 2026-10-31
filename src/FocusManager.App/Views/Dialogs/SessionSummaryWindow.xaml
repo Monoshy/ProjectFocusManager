@@ -1,0 +1,89 @@
+<Window x:Class="FocusManager.App.Views.Dialogs.SessionSummaryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource DialogWindowStyle}"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Resources/app.ico"
+        Background="{DynamicResource SurfaceBrush}"
+        Title="本次专注总结"
+        Width="520"
+        SizeToContent="Height">
+
+    <StackPanel Margin="28,24,28,24">
+        <TextBlock Text="这一轮结束了" FontSize="20" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}" />
+
+        <TextBlock Style="{StaticResource SecondaryTextStyle}" Margin="0,6,0,0" TextWrapping="Wrap">
+            <Run Text="项目：" />
+            <Run x:Name="ProjectNameRun" FontWeight="SemiBold" />
+        </TextBlock>
+
+        <!-- 本轮统计 -->
+        <Border Margin="0,18,0,0" Padding="16,14"
+                CornerRadius="{StaticResource RadiusCard}"
+                Background="{DynamicResource SurfaceAltBrush}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="有效专注"
+                           Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="暂停时间"
+                           Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="暂停次数 / 想法"
+                           Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Center" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" x:Name="EffectiveText"
+                           FontFamily="{DynamicResource TimerFontFamily}"
+                           FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0"
+                           Foreground="{DynamicResource FocusBrush}" HorizontalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="PausedText"
+                           FontFamily="{DynamicResource TimerFontFamily}"
+                           FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                <TextBlock Grid.Row="1" Grid.Column="2" x:Name="CountText"
+                           FontFamily="{DynamicResource TimerFontFamily}"
+                           FontSize="22" FontWeight="SemiBold" Margin="0,6,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <TextBlock Text="本轮完成了什么？（必填）" Style="{StaticResource SectionTitleTextStyle}" Margin="0,22,0,0" />
+
+        <TextBlock Style="{StaticResource MutedTextStyle}" Margin="0,5,0,0" TextWrapping="Wrap"
+                   Text="一句话就行，写给自己看。以后翻项目记录时，这是最有用的部分。" />
+
+        <!-- 这是必填的主输入框，默认约四行，随内容长高到十行左右再滚动 -->
+        <TextBox x:Name="ProgressBox"
+                 Style="{StaticResource AppTextAreaStyle}"
+                 Margin="0,10,0,0" />
+
+        <TextBlock Text="有什么心得，或者还没解决的问题？（可以不填）"
+                   Style="{StaticResource SectionTitleTextStyle}" Margin="0,18,0,0" />
+
+        <TextBox x:Name="ReflectionBox"
+                 Style="{StaticResource AppTextAreaStyle}"
+                 Margin="0,10,0,0" />
+
+        <TextBlock x:Name="ErrorText"
+                   Style="{StaticResource MutedTextStyle}"
+                   Foreground="{DynamicResource DangerBrush}"
+                   Margin="0,10,0,0"
+                   TextWrapping="Wrap"
+                   Visibility="Collapsed" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button x:Name="CancelButton" Content="继续专注" Style="{StaticResource SecondaryButtonStyle}"
+                    Margin="0,0,10,0" IsCancel="True" Click="OnCancelClick" />
+            <Button x:Name="SaveButton" Content="保存并结束" Style="{StaticResource PrimaryButtonStyle}"
+                    IsDefault="True" Click="OnSaveClick" />
+        </StackPanel>
+    </StackPanel>
+</Window>

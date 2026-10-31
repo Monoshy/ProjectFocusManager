@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FocusManager.App/FocusManager.App.csproj" />
+    <Project Path="src/FocusManager.Core/FocusManager.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FocusManager.Tests/FocusManager.Tests.csproj" />
+  </Folder>
+</Solution>

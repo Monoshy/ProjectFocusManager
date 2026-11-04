@@ -126,11 +126,23 @@ public partial class ApplicationPickerWindow : Window
         }
 
         if (Rows.Count > 0 && ApplicationListBox.SelectedItem is null)
-            ApplicationListBox.SelectedIndex = 0;
+        {
+            // 默认落在第一个「还没加过」的行上：已经在本轮里的程序点进来也加不了，
+            // 默认选中它只会让用户先看到一句「不用再加一次」。
+            var firstUsable = Rows.FirstOrDefault(r => !r.AlreadyAdded);
+            if (firstUsable is not null)
+            {
+                ApplicationListBox.SelectedItem = firstUsable;
+                ApplicationListBox.ScrollIntoView(firstUsable);
+                UpdateHint();
+            }
+        }
     }
 
     private void UpdateHint()
     {
+        AddButton.IsEnabled = SelectedApplication is { } current && !_alreadyAdded.Contains(current.Id);
+
         if (Rows.Count == 0)
         {
             EmptyHintText.Text = string.IsNullOrWhiteSpace(SearchBox?.Text)
@@ -142,7 +154,7 @@ public partial class ApplicationPickerWindow : Window
 
         if (SelectedApplication is { } selected && _alreadyAdded.Contains(selected.Id))
         {
-            EmptyHintText.Text = "这个程序已经在本轮的辅助程序里了，不用再加一次。";
+            EmptyHintText.Text = "这个程序已经在本轮里了（主程序或辅助程序），不用再加一次。";
             EmptyHintBorder.Visibility = Visibility.Visible;
             return;
         }
@@ -236,7 +248,7 @@ public partial class ApplicationPickerWindow : Window
 
         if (_alreadyAdded.Contains(selected.Id))
         {
-            ShowHint("这个程序已经在本轮的辅助程序里了，不用再加一次。");
+            ShowHint("这个程序已经在本轮里了（主程序或辅助程序），不用再加一次。");
             return;
         }
 

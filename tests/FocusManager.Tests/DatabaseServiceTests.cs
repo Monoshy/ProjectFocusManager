@@ -204,7 +204,7 @@ public sealed class DatabaseServiceTests
     }
 
     [Fact]
-    public void MigrationRehearsal_V1ToV2_FollowsDocumentedRules()
+    public void MigrationRehearsal_V2ToV3_FollowsDocumentedRules()
     {
         // v2→v3 迁移演练：v2（项目辅助程序）已经真实发布，这里按 PROJECT_STATUS.md 里写死的
         // 迁移规则再往后预演一次，保证规则本身可行，而不是等到真写 v3 时才发现坑：

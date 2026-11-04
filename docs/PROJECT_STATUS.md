@@ -10,13 +10,13 @@
 
 **目标**：一个完全本地、低内存、不打扰学习的 Windows 桌面专注管理工具。以「项目」为中心正向计时，记录学习进度和随手想法，切到不该用的软件时只提醒、不强制。
 
-**当前状态**：六个阶段全部完成并交付。181 项测试全过，收尾验证（备份恢复、迁移演练、内存、高 DPI）做完，Velopack 用户级安装包与自包含发布产物已产出。
+**当前状态**：六个阶段全部完成并交付；之后又追加了一轮需求（项目辅助程序、删除单条专注记录、作废本轮 + 5 分钟规则）。220 项测试全过，收尾验证（备份恢复、迁移演练、内存、高 DPI）做完，Velopack 用户级安装包与自包含发布产物已产出。
 
 | 项目 | 现状 |
 |---|---|
 | 最新提交 | `git log -1` 查询 |
 | 提交总数 | `git rev-list --count HEAD` |
-| 自动化测试 | **181 项，全部通过**（约 1 秒） |
+| 自动化测试 | **220 项，全部通过**（约 1 秒） |
 | 代码规模 | Core 2,987 行 + App 7,558 行 + 测试约 2,100 行 ≈ 12,700 行 |
 | 发布产物 | `dist/Installer/ProjectFocusManager-win-Setup.exe`（用户级安装包）、`dist/Installer/ProjectFocusManager-win-Portable.zip`（免安装）、`dist/win-x64/`（自包含目录，不进仓库） |
 | 数据位置 | 正式版：`%LOCALAPPDATA%\ProjectFocusManager\data\focus.db`；三级回退见 `docs/数据库说明.md` |
@@ -127,6 +127,7 @@ D:\focustool\
 - 新建项目（名称 ≤200 字、可填说明）、重命名、归档
 - 项目列表（按创建时间倒序）、累计专注时间（由 `FocusIntervals` 求和得出）
 - 删除项目：显示影响（N 轮记录、累计时长、N 条想法）、二次确认、`running/paused` 会话时拒绝删除、显式按顺序级联清理 6 张表
+- 删除单条专注记录：只删这一次，项目与其它记录不动，项目累计时间按差额回退；运行中的那一轮拒绝删除；关联想法只解绑不删
 
 **专注计时**
 - 正向计时，不限时长，`Stopwatch` 单调时钟（改系统时间不影响）
@@ -135,6 +136,15 @@ D:\focustool\
 - 15 秒心跳检查点（`SessionCheckpoints`），崩溃最多丢 15 秒
 - 结束总结：必填「本轮完成了什么」、选填心得，显示有效时间 / 暂停时间 / 暂停次数 / 想法数
 - 中途结束也保留已记录时间
+- 作废本轮：整轮丢弃，不记时间、不留记录，二次确认后执行
+- 不到 5 分钟（`SessionRecordingRules.MinimumEffectiveSeconds = 300`）的一轮，结束时问一句「作废 / 仍然保存」，默认建议作废；崩溃恢复出来的那一轮不受此限
+
+**辅助程序**
+- 一个项目可以配多个辅助程序（多对多，`ProjectApplications`），开始专注时自动带上
+- 专注进行中也能补：专注页「添加」、离开提醒窗口「添加辅助程序」
+- 每轮开始时把主程序 + 辅助程序写成快照（`SessionApplications`），应用改名或被删都不影响历史
+- 加/减辅助程序后白名单实时同步（`FocusGuardPolicy.UpdateAllowList`），不用重开这一轮
+- 选择器支持按名字/进程名筛选、从正在运行的程序里挑、当场新建应用
 
 **随手记**
 - 独立页面：选项目、写一句、按 Ctrl+Enter 或点「记下来」保存；时间自动记录
@@ -147,9 +157,9 @@ D:\focustool\
 - 预置 Obsidian / 百度网盘 / CCtalk（可按进程名识别，不要求路径）
 - 从 `.exe` 文件添加、从正在运行的程序添加、修改、停用/启用、删除
 - 路径失效检测（`HasUsablePath`）
-- 本轮白名单 = 选定的主应用 + Obsidian + 内置 ChatGPT + 自身 + 必要系统窗口
+- 本轮白名单 = 选定的主应用 + 项目配的辅助程序 + Obsidian + 内置 ChatGPT + 自身 + 必要系统窗口
 - **登记过 ≠ 自动获权**
-- 切到未授权应用：强制置顶、抢焦点提醒一次；「返回项目」继续计时；「确认切换」后再选暂停（填原因）或结束
+- 切到未授权应用：强制置顶、抢焦点提醒一次；「返回项目」继续计时；「确认切换」后再选暂停（填原因）或结束；「添加辅助程序」把当前程序直接加进本轮（选择器默认选中它）
 - 同一段未授权只提醒一次；回到允许环境才重置
 - 真全屏时提醒延后，退出全屏后补上（区分全屏与最大化）
 
@@ -199,7 +209,7 @@ D:\focustool\
 
 - 位置：`{数据目录}\focus.db`，备份在同目录 `backups\`
 - 引擎：SQLite，`Microsoft.Data.Sqlite 10.0.14`，`journal_mode=WAL`、`synchronous=NORMAL`、`busy_timeout=5000`、`foreign_keys=ON`
-- 版本：`PRAGMA user_version = 1`（`DatabaseService.TargetSchemaVersion`）
+- 版本：`PRAGMA user_version = 2`（`DatabaseService.TargetSchemaVersion`）
 - **时间一律存 UTC**，格式 `yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'`；显示时才转本地时间
 
 | 表 | 说明 |
@@ -212,8 +222,10 @@ D:\focustool\
 | `IdeaNotes` | 随手记想法（`Status` ∈ pending / done，`SessionId` 可空） |
 | `AppSettings` | 键值对：`Theme`、`PauseReminderMinutes`、`CloseAction` |
 | `SessionCheckpoints` | 15 秒心跳快照，用于崩溃后估算已专注时间（只保留最近 50 条） |
+| `ProjectApplications`（v2） | 项目配了哪些辅助程序，多对多，`UNIQUE(ProjectId, ApplicationId)` |
+| `SessionApplications`（v2） | 本轮实际用了哪些程序，带名字/进程名快照，`IsPrimary` 标主程序 |
 
-**迁移规则**：新增表结构时，`TargetSchemaVersion` 加 1、写一个 `ApplyV2`，`Initialize()` 会自动先备份再升级；数据库版本高于程序时**拒绝打开**并提示升级程序。
+**迁移规则**：新增表结构时，`TargetSchemaVersion` 加 1、写一个 `ApplyV3`，`Initialize()` 会自动先备份再升级；数据库版本高于程序时**拒绝打开**并提示升级程序。
 
 **备份**：`VACUUM INTO` 生成一致性快照，文件名带时间戳与标签，不覆盖同名文件。
 
@@ -223,28 +235,32 @@ D:\focustool\
 
 ```bash
 source build/env.sh
-dotnet test FocusManager.slnx -c Debug            # 全量，178 项
+dotnet test FocusManager.slnx -c Debug            # 全量，220 项
 dotnet test FocusManager.slnx -c Debug --filter FocusTimerServiceTests   # 单类
 ```
 
 | 测试文件 | 数量 | 覆盖内容 |
 |---|---|---|
 | `FocusTimerServiceTests` | 23 | 计时准确性、暂停不计时、多段、冻结、心跳、整秒四舍五入、系统时间跳变 |
-| `SessionServiceTests` | 17 | 会话生命周期、异常恢复不算停机时间、累计统计 |
-| `FocusGuardPolicyTests` | 15 | 提醒状态机（含自己窗口不重置、多未授权程序算同一段、确认后不再提醒） |
 | `IdeaNoteServiceTests` | 20 | 随手记：内容校验、项目/会话归属校验、筛选、标记完成与撤回、删除、随项目级联删除、会话结束后仍保留 |
 | `ApplicationServiceTests` | 19 | 预置应用、添加/修改/停用/删除、进程名规范化、路径失效 |
-| `ProjectServiceTests` | 11 | 项目增改查、搜索通配符转义 |
-| `FocusAllowListTests` | 16 | 白名单语义（登记≠获权、系统窗口、大小写与后缀） |
+| `FocusGuardPolicyTests` | 18 | 提醒状态机（含自己窗口不重置、多未授权程序算同一段、确认后不再提醒、运行中更新白名单） |
+| `SessionServiceTests` | 17 | 会话生命周期、异常恢复不算停机时间、累计统计 |
 | `TimeFormatterTests` | 16 | 时长中文表述、时钟格式 |
-| `DatabaseServiceTests` | 9 | 迁移、版本拒绝、备份不覆盖、UTC 往返、备份恢复实测、v1→v2 迁移演练 |
+| `FocusAllowListTests` | 16 | 白名单语义（登记≠获权、系统窗口、大小写与后缀、辅助程序放行） |
 | `CloseBehaviorRuleTests` | 14 | 关闭行为解析 |
-| `PauseReminderRuleTests` | 7 | 提醒阈值解析 |
+| `SessionRecordingRulesTests` | 11 | 5 分钟阈值边界（299 / 300 秒）、作废提示文案 |
+| `SessionDeletionTests` | 11 | 删单条记录：级联清干净、想法解绑不删、项目累计回退、运行中拒绝删除 |
+| `ProjectServiceTests` | 11 | 项目增改查、搜索通配符转义 |
+| `DatabaseServiceTests` | 10 | 迁移、版本拒绝、备份不覆盖、UTC 往返、备份恢复实测、v1→v2 真实升级、v2→v3 流程演练 |
+| `SessionApplicationSnapshotTests` | 7 | 会话开始时快照主程序 + 项目辅助程序、运行中追加、去重、应用删除后快照仍在 |
 | `ProjectDeletionTests` | 7 | 删除影响、级联清理、运行中拒绝删除 |
+| `PauseReminderRuleTests` | 7 | 提醒阈值解析 |
 | `SettingsServiceTests` | 6 | 键值读写 |
+| `ProjectApplicationServiceTests` | 6 | 项目辅助程序挂载/移除的幂等与校验 |
 | `ForegroundHelperTests` | 1 | 真实窗口最小化后 ForceActivate 回到前台（winver.exe 实测） |
 
-合计 181 项（14 个测试类；Theory 的每个数据行单独算一项，用 `dotnet test --list-tests` 可核对）。
+合计 220 项（18 个测试类；Theory 的每个数据行单独算一项，用 `dotnet test --list-tests` 可核对）。
 
 **测试没覆盖的（重要）**：整个 App 层（窗口、托盘、前台监听、激活应用、单实例）基本无 xUnit 用例（仅 ForegroundHelper 一项引入了 App 工程）。这些行为靠 `.tools\screens\` 下的 PowerShell + UIAutomation 脚本实测，**脚本不进仓库**（被 gitignore），换机器就没了。
 
@@ -286,6 +302,8 @@ dotnet test FocusManager.slnx -c Debug --filter FocusTimerServiceTests   # 单�
 ## 9. 剩余任务与推荐顺序
 
 用户已确认的顺序：**随手记（已完成）→ ChatGPT（已完成）→ 收尾（已完成）→ 打包（已完成）**。
+
+之后追加的一轮需求也已完成：**项目辅助程序 → 删除单条专注记录 → 作废本轮 + 5 分钟规则**（`5a116a1` 数据/服务层，`270da65` 界面）。
 
 全部交付。若后续继续迭代，优先级建议：
 

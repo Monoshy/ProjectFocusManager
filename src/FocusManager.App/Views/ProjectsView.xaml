@@ -185,6 +185,7 @@
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
                                             <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Grid.Column="0" Text="{Binding DateText}"
@@ -196,11 +197,29 @@
                                                    FontWeight="SemiBold"
                                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                                    VerticalAlignment="Center" />
+
+                                        <!-- 删掉这一条记录：只删这次，不动项目，也不动别的记录 -->
+                                        <Button Grid.Column="2"
+                                                Style="{StaticResource IconButtonStyle}"
+                                                Margin="10,0,0,0"
+                                                Padding="5"
+                                                VerticalAlignment="Center"
+                                                ToolTip="删掉这条记录（只删这一次）"
+                                                Click="OnDeleteSessionClick">
+                                            <Path Data="{StaticResource IconTrash}"
+                                                  Stroke="{DynamicResource TextMutedBrush}"
+                                                  StrokeThickness="1.6"
+                                                  StrokeLineJoin="Round"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round"
+                                                  Width="12" Height="12"
+                                                  Stretch="Uniform"
+                                                  VerticalAlignment="Center" />
+                                        </Button>
                                     </Grid>
 
                                     <TextBlock Text="{Binding PausedText}" Style="{StaticResource MutedTextStyle}"
                                                Margin="0,6,0,0" />
-
                                     <!--
                                         这一轮做了什么。用只读 TextBox 而不是 TextBlock：
                                         想复制下来贴到别处（笔记、聊天）时可以直接选中，

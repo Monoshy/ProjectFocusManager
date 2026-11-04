@@ -148,6 +148,19 @@ public sealed class ProjectsViewModel : ObservableObject
         return impact;
     }
 
+    /// <summary>
+    /// 删掉一条专注记录（不动项目本身）。
+    /// 这一轮如果还在进行中，SessionService 会抛异常，调用方负责提示用户。
+    /// </summary>
+    public SessionDeletionImpact DeleteSession(long sessionId)
+    {
+        var impact = _services.Sessions.DeleteSession(sessionId);
+
+        Reload();
+
+        return impact;
+    }
+
     /// <summary>重新从数据库读一遍项目列表（结束一轮专注后需要调用）。</summary>
     public void Reload()
     {

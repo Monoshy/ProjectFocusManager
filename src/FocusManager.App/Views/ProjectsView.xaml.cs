@@ -69,4 +69,43 @@ public partial class ProjectsView : UserControl
             AppMessage.Show(owner, ex.Message, "这个项目暂时不能删", MessageKind.Warning);
         }
     }
+
+    /// <summary>
+    /// 删掉一条专注记录。只影响这一次，项目本身和别的记录都还在。
+    /// 项目累计时间会跟着减少，所以先把「会少多少」说清楚。
+    /// </summary>
+    private void OnDeleteSessionClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not SessionListItem item)
+            return;
+
+        var owner = Window.GetWindow(this);
+
+        var confirmed = AppMessage.Confirm(
+            owner,
+            $"确定要删掉 {item.DateText} 这一条吗？\n\n"
+            + $"这一轮记的是 {item.DurationText}，删掉之后项目累计时间会相应减少。撤不回来。",
+            "删除这条记录",
+            okText: "删除",
+            cancelText: "不删了",
+            kind: MessageKind.Error);
+
+        if (!confirmed)
+            return;
+
+        try
+        {
+            var impact = _viewModel.DeleteSession(item.Session.Id);
+
+            AppMessage.Show(
+                owner,
+                $"这条记录已经删掉了，{impact.EffectiveText} 从项目累计里减掉了。",
+                "记录已删除",
+                MessageKind.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            AppMessage.Show(owner, ex.Message, "这条记录暂时不能删", MessageKind.Warning);
+        }
+    }
 }

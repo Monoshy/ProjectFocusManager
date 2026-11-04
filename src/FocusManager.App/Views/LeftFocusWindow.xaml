@@ -29,8 +29,15 @@
                    TextWrapping="Wrap"
                    Text="刚才那个窗口不在本轮的专注环境里。计时还在继续，要不要暂停由你自己决定。" />
 
-        <!-- 第一步：返回项目 / 确认切换 -->
+        <!-- 第一步：返回项目 / 确认切换 / 把这个程序加进本轮 -->
         <StackPanel x:Name="FirstStepPanel" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button x:Name="AddApplicationButton"
+                    Content="添加辅助程序"
+                    Style="{StaticResource GhostButtonStyle}"
+                    Margin="0,0,10,0"
+                    Click="OnAddApplicationClick"
+                    ToolTip="把刚才切过去的那个程序也算进本轮，之后切到它就不再提醒" />
+
             <Button x:Name="SwitchButton"
                     Content="确认切换"
                     Style="{StaticResource SecondaryButtonStyle}"

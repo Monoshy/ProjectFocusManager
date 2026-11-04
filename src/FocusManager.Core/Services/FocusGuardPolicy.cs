@@ -45,7 +45,7 @@ public enum FocusGuardAction
 /// </summary>
 public sealed class FocusGuardPolicy
 {
-    private readonly FocusAllowList _allowList;
+    private FocusAllowList _allowList;
 
     private bool _hasPendingReminder;
 
@@ -113,6 +113,15 @@ public sealed class FocusGuardPolicy
 
         return FocusGuardAction.Remind;
     }
+
+    /// <summary>
+    /// 换一份允许名单，但**保留当前状态**。
+    ///
+    /// 专注进行中临时加一个辅助程序时会走到这里。之所以不新建 policy，
+    /// 是因为新建会把「这一段已经提醒过」的状态清掉，于是同一个离开过程又弹一次提醒。
+    /// </summary>
+    public void UpdateAllowList(FocusAllowList allowList)
+        => _allowList = allowList ?? throw new ArgumentNullException(nameof(allowList));
 
     /// <summary>用户点了「确认切换」，后面由他自己决定暂停还是结束。</summary>
     public void MarkUserConfirmed()

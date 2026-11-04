@@ -40,6 +40,7 @@ public sealed class FocusViewModel : ObservableObject
 
         ReloadProjects();
         ReloadApplications();
+        ReloadAuxiliaryApplications();
         RefreshDisplay();
     }
 
@@ -48,6 +49,29 @@ public sealed class FocusViewModel : ObservableObject
     public ObservableCollection<Project> Projects { get; } = [];
 
     public ObservableCollection<ApplicationInfo> Applications { get; } = [];
+
+    /// <summary>
+    /// 本轮一起用的辅助程序。空闲时看的是「这个项目平时挂着哪些」，
+    /// 专注中看的是「这一轮实际记下了哪些」，两者在开始的那一刻对齐。
+    /// </summary>
+    public ObservableCollection<ApplicationInfo> AuxiliaryApplications { get; } = [];
+
+    public bool HasAuxiliaryApplications => AuxiliaryApplications.Count > 0;
+
+    public string AuxiliarySummaryText => AuxiliaryApplications.Count == 0
+        ? string.Empty
+        : string.Join("、", AuxiliaryApplications.Select(a => a.Name));
+
+    /// <summary>一个辅助程序都没有时的说明，只在空闲态显示。</summary>
+    public string AuxiliaryEmptyHint
+        => "还没有辅助程序。一个项目可以同时用好几个程序，比如主程序是 CCtalk，另外还要开 Obsidian 记笔记。";
+
+    /// <summary>这一轮允许的辅助程序进程名，用来拼前台窗口的白名单。</summary>
+    public IReadOnlyList<string> CurrentAuxiliaryProcessNames
+        => AuxiliaryApplications
+            .Select(a => a.ProcessName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToList();
 
     public Project? SelectedProject
     {
@@ -58,6 +82,10 @@ public sealed class FocusViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(SelectedProjectTotalText));
                 OnPropertyChanged(nameof(CanStart));
+
+                // 换了项目，跟着换一批辅助程序：每个项目平时用的程序不一样。
+                if (IsIdle)
+                    ReloadAuxiliaryApplications();
             }
         }
     }
@@ -187,6 +215,83 @@ public sealed class FocusViewModel : ObservableObject
         SelectedApplication = Applications.FirstOrDefault(a => a.Id == previousId) ?? Applications.FirstOrDefault();
     }
 
+    /// <summary>
+    /// 重新读一遍本轮/本项目的辅助程序。
+    /// 专注中读的是这一轮的快照（改项目挂载不会影响已经在跑的这一轮），
+    /// 空闲时读的是项目平时挂着的那几个。
+    /// </summary>
+    public void ReloadAuxiliaryApplications()
+    {
+        AuxiliaryApplications.Clear();
+
+        if (!IsIdle && _services.Sessions.CurrentSessionId is { } sessionId)
+        {
+            foreach (var row in _services.Sessions.GetSessionApplications(sessionId))
+            {
+                if (row.IsPrimary) continue;
+
+                var application = row.ApplicationId is { } id
+                    ? _services.Applications.FindById(id)
+                    : null;
+
+                // 应用被删掉了也照样显示：这一轮确实用过它，名字得留着。
+                AuxiliaryApplications.Add(application ?? new ApplicationInfo
+                {
+                    Id = row.ApplicationId ?? 0,
+                    Name = row.NameSnapshot,
+                    ProcessName = row.ProcessNameSnapshot,
+                });
+            }
+        }
+        else if (SelectedProject is { } project)
+        {
+            foreach (var application in _services.ProjectApplications.ListForProject(project.Id))
+            {
+                AuxiliaryApplications.Add(application);
+            }
+        }
+
+        OnPropertyChanged(nameof(HasAuxiliaryApplications));
+        OnPropertyChanged(nameof(AuxiliarySummaryText));
+        OnPropertyChanged(nameof(AuxiliaryEmptyHint));
+        OnPropertyChanged(nameof(CurrentAuxiliaryProcessNames));
+    }
+
+    /// <summary>
+    /// 加一个辅助程序。空闲时挂到项目上（下次开始自动带上）；
+    /// 专注中除了挂到项目上，还要立刻写进这一轮，让它马上算进白名单。
+    /// </summary>
+    public void AddAuxiliaryApplication(long applicationId)
+    {
+        if (!IsIdle)
+        {
+            _services.Sessions.AttachAuxiliaryApplication(applicationId);
+            ReloadAuxiliaryApplications();
+            return;
+        }
+
+        if (SelectedProject is null)
+            throw new InvalidOperationException("请先选择一个项目。");
+
+        _services.ProjectApplications.Add(SelectedProject.Id, applicationId);
+        ReloadAuxiliaryApplications();
+    }
+
+    /// <summary>移除一个辅助程序：项目上摘掉，专注中同时从这一轮摘掉。</summary>
+    public void RemoveAuxiliaryApplication(long applicationId)
+    {
+        if (!IsIdle)
+        {
+            _services.Sessions.DetachAuxiliaryApplication(applicationId);
+        }
+        else if (SelectedProject is { } project)
+        {
+            _services.ProjectApplications.Remove(project.Id, applicationId);
+        }
+
+        ReloadAuxiliaryApplications();
+    }
+
     /// <summary>开始一轮专注。失败时抛异常，异常消息可以直接显示给用户。</summary>
     public void StartSession()
     {
@@ -195,10 +300,16 @@ public sealed class FocusViewModel : ObservableObject
             throw new InvalidOperationException("请先选择一个项目。");
         }
 
-        _services.Sessions.BeginSession(SelectedProject.Id, SelectedApplication?.Id);
+        _services.Sessions.BeginSession(
+            SelectedProject.Id,
+            SelectedApplication?.Id,
+            AuxiliaryApplications.Select(a => a.Id).Where(id => id > 0).ToList());
 
         _activeProject = SelectedProject;
         _activeApplication = SelectedApplication;
+
+        // 从这一刻起，辅助程序看的是「这一轮的快照」，而不是项目平时挂着的那几个。
+        ReloadAuxiliaryApplications();
 
         UpdateTicker();
         RaiseStateChanged();
@@ -250,6 +361,29 @@ public sealed class FocusViewModel : ObservableObject
     }
 
     /// <summary>
+    /// 作废当前这一轮：不写记录、不涨项目累计时间，直接把这轮丢掉。
+    /// 返回作废前已经累计的有效秒数，用来告诉用户丢了多少。
+    /// </summary>
+    public long DiscardSession()
+    {
+        if (!_services.Sessions.HasActiveSession)
+        {
+            throw new InvalidOperationException("当前没有正在进行的专注。");
+        }
+
+        var seconds = _services.Sessions.DiscardActiveSession();
+
+        _activeProject = null;
+        _activeApplication = null;
+
+        ReloadProjects();
+        ReloadAuxiliaryApplications();
+        RaiseStateChanged();
+
+        return seconds;
+    }
+
+    /// <summary>
     /// 启动时从「上次没结束的那一轮」恢复之后，把整个页面刷新一遍。
     /// 这时计时器是新建的，所以项目名、应用名和计时状态都要重新读。
     /// </summary>
@@ -258,6 +392,7 @@ public sealed class FocusViewModel : ObservableObject
         SyncActiveFromSession();
         ReloadProjects();
         ReloadApplications();
+        ReloadAuxiliaryApplications();
         RaiseStateChanged();
     }
 

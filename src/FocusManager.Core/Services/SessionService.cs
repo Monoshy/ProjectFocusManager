@@ -499,6 +499,49 @@ public sealed class SessionService
     }
 
     /// <summary>
+    /// 专注进行中把某个辅助程序移出这一轮：这一轮立刻不再算它，
+    /// 同时也从项目上摘掉，下次开始这个项目时不会再自动带上。
+    /// 主应用不能这样摘掉——要换主应用，请结束这一轮重新开始。
+    /// </summary>
+    /// <returns>真的移掉了返回 true；这一轮本来就没有它，返回 false。</returns>
+    public bool DetachAuxiliaryApplication(long applicationId)
+    {
+        var sessionId = _sessionId;
+        var projectId = _projectId;
+
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            var isPrimary = connection.Scalar(
+                "SELECT IsPrimary FROM SessionApplications WHERE SessionId = $sessionId AND ApplicationId = $applicationId;",
+                transaction,
+                ("$sessionId", sessionId),
+                ("$applicationId", applicationId));
+
+            if (isPrimary is not null and not DBNull && Convert.ToInt64(isPrimary) == 1)
+                throw new InvalidOperationException("这是本轮的主要软件，不能当辅助程序移除。");
+
+            var removed = connection.Execute(
+                "DELETE FROM SessionApplications WHERE SessionId = $sessionId AND ApplicationId = $applicationId;",
+                transaction,
+                parameters:
+                [
+                    ("$sessionId", sessionId),
+                    ("$applicationId", applicationId)
+                ]);
+
+            transaction.Commit();
+
+            if (removed == 0)
+                return false;
+        }
+
+        _projectApplications.Remove(projectId, applicationId);
+
+        return true;
+    }
+
+    /// <summary>
     /// 作废当前这一轮：时间不记录，会话连同它的有效段、暂停记录、心跳一起删掉。
     /// 用在「用户主动结束、但有效时间不到 5 分钟」以及用户直接点「作废」的时候。
     /// </summary>

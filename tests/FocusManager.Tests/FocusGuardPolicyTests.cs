@@ -195,4 +195,46 @@ public class FocusGuardPolicyTests
 
         Assert.Equal(FocusGuardAction.Remind, policy.Evaluate(null, isFullscreen: false));
     }
+
+    [Fact]
+    public void UpdateAllowList_NewProcessStopsReminding()
+    {
+        var policy = CreatePolicy();
+
+        Assert.Equal(FocusGuardAction.Remind, policy.Evaluate("chrome", isFullscreen: false));
+
+        // 用户在提醒窗口里点了「添加辅助程序」，chrome 从此算本轮环境的一部分。
+        policy.UpdateAllowList(new FocusAllowList("CCtalk", ["chrome"]));
+
+        Assert.Equal(FocusGuardAction.ReturnedToFocus, policy.Evaluate("chrome", isFullscreen: false));
+        Assert.False(policy.WarnedForCurrentEpisode);
+    }
+
+    [Fact]
+    public void UpdateAllowList_KeepsStateSoTheReminderIsNotRepeated()
+    {
+        var policy = CreatePolicy();
+
+        policy.Evaluate("chrome", isFullscreen: false);
+        Assert.Equal(FocusGuardState.ReminderShown, policy.State);
+
+        // 加的是另一个程序，当前这段离开的处理状态不该被清掉。
+        policy.UpdateAllowList(new FocusAllowList("CCtalk", ["Obsidian"]));
+
+        Assert.Equal(FocusGuardState.ReminderShown, policy.State);
+        Assert.Equal(FocusGuardAction.None, policy.Evaluate("chrome", isFullscreen: false));
+    }
+
+    [Fact]
+    public void UpdateAllowList_DroppingAProcessRemindsAgain()
+    {
+        var policy = new FocusGuardPolicy(new FocusAllowList("CCtalk", ["chrome"]));
+
+        Assert.Equal(FocusGuardAction.None, policy.Evaluate("chrome", isFullscreen: false));
+
+        // 用户把辅助程序移掉了，下一次切过去要重新提醒。
+        policy.UpdateAllowList(new FocusAllowList("CCtalk"));
+
+        Assert.Equal(FocusGuardAction.Remind, policy.Evaluate("chrome", isFullscreen: false));
+    }
 }

@@ -54,7 +54,24 @@ public sealed class FocusGuardService : IDisposable
     }
 
     /// <summary>
-    /// 用户从提醒里点了「返回项目」之后调用：重新判断一次当前窗口，
+    /// 专注进行中换了允许名单（比如临时加了一个辅助程序）。
+    /// 返回 false 表示当前没在监听，调用方不用管。
+    /// </summary>
+    public bool UpdateAllowList(FocusAllowList allowList)
+    {
+        if (_policy is null || !IsRunning)
+            return false;
+
+        _policy.UpdateAllowList(allowList);
+
+        // 名单变了就重新判断一次当前窗口：如果用户此刻就在新加的程序里，
+        // 应该马上算「回到学习环境」，提醒窗口也能顺势关掉。
+        _monitor.Refresh();
+
+        return true;
+    }
+
+    /// <summary>用户从提醒里点了「返回项目」之后调用：重新判断一次当前窗口，
     /// 并把「这一段已经提醒过」的状态留着，避免立刻又弹一次。
     /// </summary>
     /// <summary>

@@ -6,6 +6,7 @@ using FocusManager.App.Native;
 using FocusManager.App.Services;
 using FocusManager.App.ViewModels;
 using FocusManager.App.Views.Dialogs;
+using FocusManager.Core.Models;
 using FocusManager.Core.Services;
 using FocusManager.Core.Time;
 
@@ -205,6 +206,33 @@ public partial class FocusView : UserControl
 
         try
         {
+            // 不到 5 分钟的一轮，默认不留记录。但也不硬性丢掉——
+            // 有人就是想在开始前先记一笔，所以问一句，让他自己定。
+            if (!SessionRecordingRules.ShouldRecord(dialog.EffectiveDuration))
+            {
+                var discard = AppMessage.Confirm(
+                    Window.GetWindow(this),
+                    $"这一轮有效专注 {TimeFormatter.ToChinese(dialog.EffectiveDuration)}，不到 5 分钟。"
+                    + "按规则这种不记进历史——要作废，还是仍然保存下来？",
+                    "这一轮要记下来吗？",
+                    okText: "作废这一轮",
+                    cancelText: "仍然保存",
+                    kind: MessageKind.Warning);
+
+                if (discard)
+                {
+                    _viewModel.DiscardSession();
+
+                    AppMessage.Show(
+                        Window.GetWindow(this),
+                        "这一轮已经作废，没有记进项目时间。",
+                        "作废好了",
+                        MessageKind.Success);
+
+                    return;
+                }
+            }
+
             _viewModel.FinishSession(dialog.ProgressNote, dialog.ReflectionNote);
 
             AppMessage.Show(
@@ -310,7 +338,23 @@ public partial class FocusView : UserControl
 
         _guard ??= CreateGuard();
 
-        _guard.Start(new FocusAllowList(processName));
+        _guard.Start(new FocusAllowList(processName, _viewModel.CurrentAuxiliaryProcessNames));
+    }
+
+    /// <summary>
+    /// 本轮加了新的辅助程序之后，把白名单同步过去。
+    /// 不重建 guard 是因为重建会丢掉「这一段离开已经处理过」的状态，
+    /// 结果就是刚点完确认切换又弹一次。
+    /// </summary>
+    private void RefreshAllowList()
+    {
+        if (_guard is null || !_guard.IsRunning) return;
+
+        var processName = _viewModel.CurrentApplicationProcessName;
+
+        if (string.IsNullOrWhiteSpace(processName)) return;
+
+        _guard.UpdateAllowList(new FocusAllowList(processName, _viewModel.CurrentAuxiliaryProcessNames));
     }
 
     private void StopFocusGuard()
@@ -351,6 +395,10 @@ public partial class FocusView : UserControl
         window.FinishRequested += (_, _) => Dispatcher.BeginInvoke(
             new Action(FinishCurrentSession), DispatcherPriority.Background);
 
+        // 「添加辅助程序」：默认选中刚才那个窗口对应的程序，用户不用在列表里翻。
+        window.AddApplicationRequested += (_, _) => Dispatcher.BeginInvoke(
+            new Action(() => AddAuxiliaryApplication(info.ProcessName)), DispatcherPriority.Background);
+
         window.Dismissed += (_, _) => _reminderWindow = null;
 
         _reminderWindow = window;
@@ -367,6 +415,132 @@ public partial class FocusView : UserControl
         _reminderWindow = null;
 
         window.Close();
+    }
+
+    // ==================== 辅助程序 ====================
+
+    private void OnAddAuxiliaryClick(object sender, RoutedEventArgs e) => AddAuxiliaryApplication();
+
+    /// <summary>
+    /// 加一个辅助程序进本轮。
+    /// 空闲态下是「给这个项目配上」，运行中则是「本轮现在就允许它」——
+    /// 后者会顺手把项目也挂上，下次开始这个项目时自动带上。
+    /// </summary>
+    private void AddAuxiliaryApplication(string? preselectProcessName = null)
+    {
+        var services = AppServices.Current;
+        if (services is null) return;
+
+        var alreadyAdded = new List<long>();
+
+        if (services.Sessions.CurrentSessionId is { } sessionId)
+        {
+            alreadyAdded.AddRange(services.Sessions.GetSessionApplications(sessionId)
+                .Where(row => row.ApplicationId.HasValue)
+                .Select(row => row.ApplicationId!.Value));
+        }
+        else
+        {
+            alreadyAdded.AddRange(_viewModel.AuxiliaryApplications
+                .Where(a => a.Id > 0)
+                .Select(a => a.Id));
+        }
+
+        if (_viewModel.SelectedApplication is { } primary)
+            alreadyAdded.Add(primary.Id);
+
+        var picker = new ApplicationPickerWindow(alreadyAdded, preselectProcessName)
+        {
+            Owner = Window.GetWindow(this),
+        };
+
+        if (picker.ShowDialog() != true || picker.SelectedApplication is not { } chosen)
+            return;
+
+        try
+        {
+            _viewModel.AddAuxiliaryApplication(chosen.Id);
+
+            RefreshAllowList();
+
+            AppMessage.Show(
+                Window.GetWindow(this),
+                $"「{chosen.Name}」已经加进本轮了，切到它不会再弹提醒。",
+                "加好了",
+                MessageKind.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+    }
+
+    private void OnRemoveAuxiliaryClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ApplicationInfo application)
+            return;
+
+        try
+        {
+            _viewModel.RemoveAuxiliaryApplication(application.Id);
+
+            RefreshAllowList();
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
+    }
+
+    // ==================== 作废这一轮 ====================
+
+    private void OnDiscardClick(object sender, RoutedEventArgs e) => DiscardCurrentSession();
+
+    /// <summary>
+    /// 作废：这一轮整个丢掉，不记时间也不留记录。
+    /// 用错了就找不回来，所以要问一次。
+    /// </summary>
+    private void DiscardCurrentSession()
+    {
+        var services = AppServices.Current;
+        if (services is null) return;
+
+        if (services.Sessions.CurrentSessionId is null)
+        {
+            ShowError("当前没有正在进行的专注。");
+            return;
+        }
+
+        var elapsed = services.Sessions.Timer?.EffectiveDuration ?? TimeSpan.Zero;
+
+        var confirmed = AppMessage.Confirm(
+            Window.GetWindow(this),
+            $"这一轮已经专注了 {TimeFormatter.ToChinese(elapsed)}。作废之后不算进项目时间，也不会留下这条记录，撤不回来。",
+            "作废这一轮？",
+            okText: "作废",
+            cancelText: "继续专注",
+            kind: MessageKind.Error);
+
+        if (!confirmed) return;
+
+        StopFocusGuard();
+        StopPauseReminder();
+        StopCheckpointTimer();
+
+        try
+        {
+            _viewModel.DiscardSession();
+
+            AppMessage.Show(
+                Window.GetWindow(this),
+                "这一轮已经作废，没有记进项目时间。",
+                "作废好了",
+                MessageKind.Success);
+        }
+        catch (Exception ex)
+        {
+            ShowError(ex.Message);
+        }
     }
 
     // ==================== 暂停提醒 ====================

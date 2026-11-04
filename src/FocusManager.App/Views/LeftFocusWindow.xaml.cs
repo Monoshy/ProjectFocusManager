@@ -44,6 +44,12 @@ public partial class LeftFocusWindow : Window
     /// <summary>用户点了「确认切换」：这一段离开已经处理过，不该再弹第二次。</summary>
     public event EventHandler? SwitchConfirmed;
 
+    /// <summary>
+    /// 用户点了「添加辅助程序」：把刚才切过去的那个程序算进本轮。
+    /// 由外面弹选择器，并且默认选中这个程序。
+    /// </summary>
+    public event EventHandler? AddApplicationRequested;
+
     /// <summary>用户直接关掉了提醒窗口（等于不理会，专注继续）。</summary>
     public event EventHandler? Dismissed;
 
@@ -69,6 +75,12 @@ public partial class LeftFocusWindow : Window
         FirstStepPanel.Visibility = Visibility.Visible;
         TitleText.Text = "你似乎离开了当前学习环境";
         MessageText.Text = "刚才那个窗口不在本轮的专注环境里。计时还在继续，要不要暂停由你自己决定。";
+    }
+
+    private void OnAddApplicationClick(object sender, RoutedEventArgs e)
+    {
+        AddApplicationRequested?.Invoke(this, EventArgs.Empty);
+        Close();
     }
 
     private void OnPauseClick(object sender, RoutedEventArgs e)

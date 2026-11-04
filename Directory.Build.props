@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <InvariantGlobalization>false</InvariantGlobalization>
 
-    <!-- 程序版本信息（以后打包时会被 Velopack 使用） -->
-    <Version>0.1.0</Version>
+    <!-- 程序版本信息：exe 文件版本、安装包版本、注册表 DisplayVersion 都取自这里 -->
+    <Version>1.1.0</Version>
     <Company>Project Focus Manager</Company>
     <Product>Project Focus Manager</Product>
     <Copyright>Copyright (c) 2026</Copyright>

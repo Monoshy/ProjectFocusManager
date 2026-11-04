@@ -13,7 +13,7 @@ ManifestDPIAware true
   OutFile "..\.tools\temp\nsis-smoke.exe"
   RequestExecutionLevel user
 !else
-  OutFile "..\dist\Installer-traditional\${APPID}-1.0.0-Setup.exe"
+  OutFile "..\dist\Installer-traditional\${APPID}-1.1.0-Setup.exe"
   RequestExecutionLevel admin
 !endif
 
@@ -25,11 +25,11 @@ ManifestDPIAware true
 !include "MUI2.nsh"
 
 Name "${APPNAME}"
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.1.0.0"
 VIAddVersionKey /LANG=2052 "ProductName" "${APPNAME}"
 VIAddVersionKey /LANG=2052 "FileDescription" "${APPNAME} 安装程序"
-VIAddVersionKey /LANG=2052 "FileVersion" "1.0.0"
-VIAddVersionKey /LANG=2052 "ProductVersion" "1.0.0"
+VIAddVersionKey /LANG=2052 "FileVersion" "1.1.0"
+VIAddVersionKey /LANG=2052 "ProductVersion" "1.1.0"
 VIAddVersionKey /LANG=2052 "LegalCopyright" "monoshy"
 
 !insertmacro MUI_PAGE_WELCOME
@@ -49,7 +49,8 @@ ShowUnInstDetails show
 Section "Install"
   SetShellVarContext all
   SetOutPath "$INSTDIR"
-  File /r "..\dist\win-x64\*.*"
+  ; data 是本机运行产生的数据库，绝不能打进安装包
+  File /r /x data /x *.db /x *.db-wal /x *.db-shm /x *.log "..\dist\win-x64\*.*"
 
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
   CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${EXE}"
@@ -58,7 +59,7 @@ Section "Install"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "${UNKEY}" "DisplayName" "${APPNAME}"
-  WriteRegStr HKLM "${UNKEY}" "DisplayVersion" "1.0.0"
+  WriteRegStr HKLM "${UNKEY}" "DisplayVersion" "1.1.0"
   WriteRegStr HKLM "${UNKEY}" "Publisher" "monoshy"
   WriteRegStr HKLM "${UNKEY}" "DisplayIcon" "$INSTDIR\${EXE}"
   WriteRegStr HKLM "${UNKEY}" "InstallLocation" "$INSTDIR"

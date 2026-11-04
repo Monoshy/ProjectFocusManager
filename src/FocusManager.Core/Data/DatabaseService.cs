@@ -15,7 +15,7 @@ namespace FocusManager.Core.Data;
 public sealed class DatabaseService
 {
     /// <summary>当前程序支持的数据库结构版本。以后加表就 +1 并写新的迁移方法。</summary>
-    public const int TargetSchemaVersion = 1;
+    public const int TargetSchemaVersion = 2;
 
     private readonly string _databasePath;
     private readonly string _backupDirectory;
@@ -75,6 +75,11 @@ public sealed class DatabaseService
         if (currentVersion < 1)
         {
             Migrations.ApplyV1(connection, transaction);
+        }
+
+        if (currentVersion < 2)
+        {
+            Migrations.ApplyV2(connection, transaction);
         }
 
         WriteSchemaVersion(connection, TargetSchemaVersion, transaction);

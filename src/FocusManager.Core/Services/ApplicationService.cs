@@ -253,6 +253,12 @@ public sealed class ApplicationService
     public void Delete(long applicationId)
     {
         using var connection = _database.OpenConnection();
+
+        // 先解开项目上的挂载（数据库也配了级联，这里显式写一遍不依赖 PRAGMA）。
+        connection.Execute(
+            "DELETE FROM ProjectApplications WHERE ApplicationId = $id;",
+            parameters: [("$id", applicationId)]);
+
         connection.Execute("DELETE FROM Applications WHERE Id = $id;", parameters: [("$id", applicationId)]);
     }
 
@@ -271,7 +277,7 @@ public sealed class ApplicationService
         return File.Exists(application.ExecutablePath);
     }
 
-    private static ApplicationInfo Map(Microsoft.Data.Sqlite.SqliteDataReader reader) => new()
+    internal static ApplicationInfo Map(Microsoft.Data.Sqlite.SqliteDataReader reader) => new()
     {
         Id = reader.GetInt64(reader.GetOrdinal("Id")),
         Name = reader.GetString(reader.GetOrdinal("Name")),

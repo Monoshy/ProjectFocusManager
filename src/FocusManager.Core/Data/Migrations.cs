@@ -117,4 +117,50 @@ public static class Migrations
         command.CommandText = sql;
         command.ExecuteNonQuery();
     }
+
+    /// <summary>
+    /// 第 2 版：一个项目可以挂多个辅助程序，并且记住每一轮实际用了哪些。
+    ///
+    /// 两张表的分工：
+    /// · ProjectApplications —— 「这个项目平时要用哪些程序」，可以随时增删，属于配置；
+    /// · SessionApplications —— 「这一轮当时用了哪些程序」，属于历史快照，
+    ///   程序以后被删掉也能看出当时用的是什么（名称和进程名都存了副本）。
+    /// </summary>
+    public static void ApplyV2(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        const string sql = """
+            -- 项目 ↔ 辅助程序（多对多）
+            CREATE TABLE IF NOT EXISTS ProjectApplications (
+                Id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                ProjectId     INTEGER NOT NULL REFERENCES Projects(Id)     ON DELETE CASCADE,
+                ApplicationId INTEGER NOT NULL REFERENCES Applications(Id) ON DELETE CASCADE,
+                SortOrder     INTEGER NOT NULL DEFAULT 0,
+                AddedAtUtc    TEXT    NOT NULL,
+                UNIQUE(ProjectId, ApplicationId)
+            );
+
+            -- 每一轮专注实际用到的程序（含主程序），带名称/进程名快照
+            CREATE TABLE IF NOT EXISTS SessionApplications (
+                Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                SessionId           INTEGER NOT NULL REFERENCES FocusSessions(Id) ON DELETE CASCADE,
+                ApplicationId       INTEGER NULL     REFERENCES Applications(Id) ON DELETE SET NULL,
+                NameSnapshot        TEXT    NOT NULL,
+                ProcessNameSnapshot TEXT    NOT NULL,
+                IsPrimary           INTEGER NOT NULL DEFAULT 0,
+                AddedAtUtc          TEXT    NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS IX_ProjectApplications_ProjectId
+                ON ProjectApplications(ProjectId);
+            CREATE INDEX IF NOT EXISTS IX_ProjectApplications_ApplicationId
+                ON ProjectApplications(ApplicationId);
+            CREATE INDEX IF NOT EXISTS IX_SessionApplications_SessionId
+                ON SessionApplications(SessionId);
+            """;
+
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
 }

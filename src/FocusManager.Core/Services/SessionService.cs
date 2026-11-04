@@ -18,6 +18,7 @@ public sealed class SessionService
 {
     private readonly DatabaseService _database;
     private readonly ITimeSource _time;
+    private readonly ProjectApplicationService _projectApplications;
 
     private FocusTimerService? _timer;
     private long _sessionId;
@@ -27,6 +28,7 @@ public sealed class SessionService
     {
         _database = database ?? throw new ArgumentNullException(nameof(database));
         _time = timeSource ?? new SystemTimeSource();
+        _projectApplications = new ProjectApplicationService(_database, _time);
     }
 
     /// <summary>当前是否有一轮专注正在进行（计时中或暂停中）。</summary>
@@ -44,7 +46,14 @@ public sealed class SessionService
     /// </summary>
     /// <param name="projectId">项目编号。</param>
     /// <param name="primaryApplicationId">本轮主要学习应用（可以为空，阶段 2 起会要求必选）。</param>
-    public long BeginSession(long projectId, long? primaryApplicationId = null)
+    /// <param name="auxiliaryApplicationIds">
+    /// 本轮临时要用的辅助程序。项目平时挂着的辅助程序会自动带上，这里只用于
+    /// 「项目里还没挂、但这一轮想用」的情况。
+    /// </param>
+    public long BeginSession(
+        long projectId,
+        long? primaryApplicationId = null,
+        IEnumerable<long>? auxiliaryApplicationIds = null)
     {
         if (HasActiveSession)
             throw new InvalidOperationException("已经有一轮专注正在进行，请先结束它。");
@@ -70,6 +79,8 @@ public sealed class SessionService
 
         var startedAt = _time.UtcNow;
 
+        using var transaction = connection.BeginTransaction();
+
         connection.Execute(
             """
             INSERT INTO FocusSessions
@@ -80,6 +91,7 @@ public sealed class SessionService
                 ($projectId, $applicationId, $startedAt, NULL, 'running',
                  0, 0, 0, NULL, NULL, $startedAt, $startedAt);
             """,
+            transaction,
             parameters:
             [
                 ("$projectId", projectId),
@@ -87,8 +99,20 @@ public sealed class SessionService
                 ("$startedAt", SqliteValue.ToDb(startedAt))
             ]);
 
-        _sessionId = connection.LastInsertRowId();
+        _sessionId = connection.LastInsertRowId(transaction);
         _projectId = projectId;
+
+        // 把「这一轮用了哪些程序」记下来。以后改项目的辅助程序，不会改写历史记录。
+        WriteSessionApplications(
+            connection,
+            transaction,
+            _sessionId,
+            projectId,
+            primaryApplicationId,
+            auxiliaryApplicationIds,
+            startedAt);
+
+        transaction.Commit();
 
         _timer = new FocusTimerService(_time);
         _timer.IntervalCompleted += OnIntervalCompleted;
@@ -407,6 +431,137 @@ public sealed class SessionService
         return ReadSession(connection, null, sessionId);
     }
 
+    /// <summary>某一轮专注实际用到的程序（主应用在前，其余按加入顺序）。</summary>
+    public IReadOnlyList<SessionApplication> GetSessionApplications(long sessionId)
+    {
+        using var connection = _database.OpenConnection();
+        return ReadSessionApplications(connection, null, sessionId);
+    }
+
+    /// <summary>
+    /// 专注进行中临时加一个辅助程序：这一轮立刻生效，同时也挂到项目上，
+    /// 下次开始这个项目时自动带上。
+    /// </summary>
+    /// <returns>这一轮的程序快照记录。</returns>
+    public SessionApplication AttachAuxiliaryApplication(long applicationId)
+    {
+        RequireTimer();
+
+        var application = FindApplication(applicationId)
+            ?? throw new InvalidOperationException("找不到这个学习应用，请先在应用管理里添加。");
+
+        var sessionId = _sessionId;
+        var projectId = _projectId;
+
+        using (var connection = _database.OpenConnection())
+        using (var transaction = connection.BeginTransaction())
+        {
+            var alreadyInSession = connection.Scalar(
+                "SELECT COUNT(*) FROM SessionApplications WHERE SessionId = $sessionId AND ApplicationId = $applicationId;",
+                transaction,
+                ("$sessionId", sessionId),
+                ("$applicationId", applicationId));
+
+            if (alreadyInSession is null or DBNull || Convert.ToInt64(alreadyInSession) == 0)
+            {
+                connection.Execute(
+                    """
+                    INSERT INTO SessionApplications
+                        (SessionId, ApplicationId, NameSnapshot, ProcessNameSnapshot, IsPrimary, AddedAtUtc)
+                    VALUES ($sessionId, $applicationId, $name, $processName, 0, $addedAt);
+                    """,
+                    transaction,
+                    parameters:
+                    [
+                        ("$sessionId", sessionId),
+                        ("$applicationId", applicationId),
+                        ("$name", application.Name),
+                        ("$processName", application.ProcessName),
+                        ("$addedAt", SqliteValue.ToDb(_time.UtcNow))
+                    ]);
+            }
+
+            transaction.Commit();
+        }
+
+        // 挂到项目上：下次开始这个项目，它会自动进入本轮的白名单。
+        _projectApplications.Add(projectId, applicationId);
+
+        return new SessionApplication
+        {
+            SessionId = sessionId,
+            ApplicationId = applicationId,
+            NameSnapshot = application.Name,
+            ProcessNameSnapshot = application.ProcessName,
+            IsPrimary = false,
+            AddedAtUtc = _time.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// 作废当前这一轮：时间不记录，会话连同它的有效段、暂停记录、心跳一起删掉。
+    /// 用在「用户主动结束、但有效时间不到 5 分钟」以及用户直接点「作废」的时候。
+    /// </summary>
+    /// <returns>作废前累计的有效专注秒数（用来提示用户丢掉了多少）。</returns>
+    public long DiscardActiveSession()
+    {
+        var timer = RequireTimer();
+
+        // 结束最后一段（或最后一次暂停），让它先落库，再统计、再删除。
+        timer.Stop();
+
+        var sessionId = _sessionId;
+        var projectId = _projectId;
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        var seconds = SumSessionSeconds(connection, transaction, sessionId);
+
+        DeleteSessionRows(connection, transaction, sessionId);
+        ProjectService.RefreshProjectTotal(connection, transaction, projectId);
+
+        transaction.Commit();
+
+        CleanupTimer();
+
+        return seconds;
+    }
+
+    /// <summary>
+    /// 删除一轮已经结束的专注记录。
+    ///
+    /// 只删这一轮：项目、想法都留着（想法会变成「不属于任何一轮」，仍然在项目里）。
+    /// 正在进行的那一轮不能这样删——先结束或作废，避免界面和数据库对不上。
+    /// </summary>
+    public SessionDeletionImpact DeleteSession(long sessionId)
+    {
+        var session = GetSession(sessionId)
+            ?? throw new InvalidOperationException($"找不到编号为 {sessionId} 的专注记录。");
+
+        if (session.Status.IsUnfinished())
+            throw new InvalidOperationException("这一轮还在进行中，先结束或作废它，再删除记录。");
+
+        using var connection = _database.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        var ideaCount = connection.Scalar(
+            "SELECT COUNT(*) FROM IdeaNotes WHERE SessionId = $id;",
+            transaction,
+            ("$id", sessionId));
+
+        DeleteSessionRows(connection, transaction, sessionId);
+        ProjectService.RefreshProjectTotal(connection, transaction, session.ProjectId);
+
+        transaction.Commit();
+
+        return new SessionDeletionImpact(
+            sessionId,
+            session.ProjectId,
+            session.EffectiveSeconds,
+            ideaCount is null or DBNull ? 0 : Convert.ToInt32(ideaCount));
+    }
+
     public IReadOnlyList<FocusInterval> GetIntervals(long sessionId)
     {
         using var connection = _database.OpenConnection();
@@ -513,6 +668,145 @@ public sealed class SessionService
             ]);
 
         RefreshTotals(connection, null, _sessionId);
+    }
+
+    /// <summary>把这一轮用到的程序写进快照表：主应用 + 项目挂着的辅助程序 + 临时指定的。</summary>
+    private static void WriteSessionApplications(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        long sessionId,
+        long projectId,
+        long? primaryApplicationId,
+        IEnumerable<long>? extraApplicationIds,
+        DateTimeOffset addedAt)
+    {
+        var ordered = new List<long>();
+
+        if (primaryApplicationId is { } primary)
+            ordered.Add(primary);
+
+        using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction;
+            command.CommandText = """
+                SELECT ApplicationId FROM ProjectApplications
+                WHERE ProjectId = $projectId
+                ORDER BY SortOrder, Id;
+                """;
+            command.Parameters.AddWithValue("$projectId", projectId);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                ordered.Add(reader.GetInt64(0));
+            }
+        }
+
+        if (extraApplicationIds is not null)
+        {
+            ordered.AddRange(extraApplicationIds);
+        }
+
+        var seen = new HashSet<long>();
+
+        foreach (var applicationId in ordered)
+        {
+            if (!seen.Add(applicationId)) continue;
+
+            var application = FindApplication(connection, transaction, applicationId);
+
+            // 应用可能刚好被删掉：这一条就跳过，历史记录宁可少一条，也不要写个空名字进去。
+            if (application is null) continue;
+
+            connection.Execute(
+                """
+                INSERT INTO SessionApplications
+                    (SessionId, ApplicationId, NameSnapshot, ProcessNameSnapshot, IsPrimary, AddedAtUtc)
+                VALUES ($sessionId, $applicationId, $name, $processName, $isPrimary, $addedAt);
+                """,
+                transaction,
+                parameters:
+                [
+                    ("$sessionId", sessionId),
+                    ("$applicationId", applicationId),
+                    ("$name", application.Name),
+                    ("$processName", application.ProcessName),
+                    ("$isPrimary", applicationId == primaryApplicationId ? 1 : 0),
+                    ("$addedAt", SqliteValue.ToDb(addedAt))
+                ]);
+        }
+    }
+
+    private static IReadOnlyList<SessionApplication> ReadSessionApplications(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        long sessionId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            SELECT * FROM SessionApplications
+            WHERE SessionId = $id
+            ORDER BY IsPrimary DESC, Id;
+            """;
+        command.Parameters.AddWithValue("$id", sessionId);
+
+        using var reader = command.ExecuteReader();
+        var result = new List<SessionApplication>();
+        while (reader.Read())
+        {
+            result.Add(new SessionApplication
+            {
+                Id = reader.GetInt64(reader.GetOrdinal("Id")),
+                SessionId = reader.GetInt64(reader.GetOrdinal("SessionId")),
+                ApplicationId = reader.IsDBNull(reader.GetOrdinal("ApplicationId"))
+                    ? null
+                    : reader.GetInt64(reader.GetOrdinal("ApplicationId")),
+                NameSnapshot = reader.GetString(reader.GetOrdinal("NameSnapshot")),
+                ProcessNameSnapshot = reader.GetString(reader.GetOrdinal("ProcessNameSnapshot")),
+                IsPrimary = SqliteValue.FromDbBool(reader.GetInt64(reader.GetOrdinal("IsPrimary"))),
+                AddedAtUtc = SqliteValue.FromDb(reader.GetString(reader.GetOrdinal("AddedAtUtc")))
+            });
+        }
+
+        return result;
+    }
+
+    private static void DeleteSessionRows(SqliteConnection connection, SqliteTransaction transaction, long sessionId)
+    {
+        // 顺序和 ProjectService.Delete 一致：先子表，再主表。
+        connection.Execute("DELETE FROM SessionApplications WHERE SessionId = $id;", transaction, ("$id", sessionId));
+        connection.Execute("DELETE FROM PauseRecords WHERE SessionId = $id;", transaction, ("$id", sessionId));
+        connection.Execute("DELETE FROM FocusIntervals WHERE SessionId = $id;", transaction, ("$id", sessionId));
+        connection.Execute("DELETE FROM SessionCheckpoints WHERE SessionId = $id;", transaction, ("$id", sessionId));
+
+        // 想法不删：它属于项目，只是不再挂在这一轮上。
+        connection.Execute(
+            "UPDATE IdeaNotes SET SessionId = NULL WHERE SessionId = $id;",
+            transaction,
+            ("$id", sessionId));
+
+        connection.Execute("DELETE FROM FocusSessions WHERE Id = $id;", transaction, ("$id", sessionId));
+    }
+
+    private ApplicationInfo? FindApplication(long applicationId)
+    {
+        using var connection = _database.OpenConnection();
+        return FindApplication(connection, null, applicationId);
+    }
+
+    private static ApplicationInfo? FindApplication(
+        SqliteConnection connection,
+        SqliteTransaction? transaction,
+        long applicationId)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = "SELECT * FROM Applications WHERE Id = $id;";
+        command.Parameters.AddWithValue("$id", applicationId);
+
+        using var reader = command.ExecuteReader();
+        return reader.Read() ? ApplicationService.Map(reader) : null;
     }
 
     private static long ToWholeSeconds(TimeSpan value)

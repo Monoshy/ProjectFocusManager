@@ -20,6 +20,7 @@ public sealed class AppServices
         Sessions = new SessionService(database);
         Statistics = new StatisticsService(database);
         Applications = new ApplicationService(database);
+        ProjectApplications = new ProjectApplicationService(database);
         Settings = new SettingsService(database);
         Ideas = new IdeaNoteService(database);
     }
@@ -35,6 +36,9 @@ public sealed class AppServices
     public StatisticsService Statistics { get; }
 
     public ApplicationService Applications { get; }
+
+    /// <summary>项目 ↔ 辅助程序的挂载关系。</summary>
+    public ProjectApplicationService ProjectApplications { get; }
 
     public SettingsService Settings { get; }
 

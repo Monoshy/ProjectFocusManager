@@ -35,6 +35,50 @@ public sealed class DatabaseServiceTests
         Assert.Contains("IdeaNotes", tables);
         Assert.Contains("AppSettings", tables);
         Assert.Contains("SessionCheckpoints", tables);
+        Assert.Contains("ProjectApplications", tables);
+        Assert.Contains("SessionApplications", tables);
+    }
+
+    [Fact]
+    public void Initialize_UpgradesV1DatabaseToV2_KeepingData()
+    {
+        using var db = new TempDatabase();
+
+        // 造一个「只有 v1」的库：把 v2 的两张表去掉，版本号退回 1，再塞一条老数据。
+        using (var connection = db.Service.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                DROP TABLE SessionApplications;
+                DROP TABLE ProjectApplications;
+                PRAGMA user_version = 1;
+                INSERT INTO Projects (Name, CreatedAtUtc) VALUES ('升级前的项目', '2026-10-31T00:00:00Z');
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        db.Service.Initialize();
+
+        Assert.Equal(2, db.Service.GetSchemaVersion());
+
+        using (var connection = db.Service.OpenConnection())
+        using (var command = connection.CreateCommand())
+        {
+            // 老数据还在。
+            command.CommandText = "SELECT Name FROM Projects;";
+            Assert.Equal("升级前的项目", command.ExecuteScalar());
+
+            // 新表建好了。
+            command.CommandText = """
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type = 'table' AND name IN ('ProjectApplications', 'SessionApplications');
+                """;
+            Assert.Equal(2L, Convert.ToInt64(command.ExecuteScalar()));
+        }
+
+        // 升级前自动备份了一份 v1 的库。
+        Assert.True(Directory.Exists(db.BackupDirectory));
+        Assert.NotEmpty(Directory.GetFiles(db.BackupDirectory, "*升级前-v1*"));
     }
 
     [Fact]
@@ -162,8 +206,8 @@ public sealed class DatabaseServiceTests
     [Fact]
     public void MigrationRehearsal_V1ToV2_FollowsDocumentedRules()
     {
-        // v1→v2 迁移演练：现在还没有真正的 v2，这里按 PROJECT_STATUS.md 第 216 行写死的
-        // 迁移规则预演一次未来升级，保证规则本身可行，而不是等到真写 v2 时才发现坑：
+        // v2→v3 迁移演练：v2（项目辅助程序）已经真实发布，这里按 PROJECT_STATUS.md 里写死的
+        // 迁移规则再往后预演一次，保证规则本身可行，而不是等到真写 v3 时才发现坑：
         //   1. 升级前先备份，备份里是升级前的数据；
         //   2. 升级后老数据原样保留；
         //   3. 旧程序拒绝打开升级后的库。
@@ -179,20 +223,20 @@ public sealed class DatabaseServiceTests
         }
 
         // 第 1 步：按 Initialize() 里升级前备份的同一方式做快照。
-        var preUpgradeBackup = db.Service.Backup("升级前-v1");
+        var preUpgradeBackup = db.Service.Backup("升级前-v2");
 
-        // 第 2 步：扮演未来的 v2 程序——加一列、版本号推到 2。
+        // 第 2 步：扮演未来的 v3 程序——加一列、版本号推到 3。
         using (var connection = db.Service.OpenConnection())
         using (var command = connection.CreateCommand())
         {
             command.CommandText = """
                 ALTER TABLE Projects ADD COLUMN DrillNote TEXT NULL;
-                PRAGMA user_version = 2;
+                PRAGMA user_version = 3;
                 """;
             command.ExecuteNonQuery();
         }
 
-        // 第 3 步：备份还是纯 v1——没有新列，但老数据齐全。
+        // 第 3 步：备份还是纯 v2——没有新列，但老数据齐全。
         using (var backupConnection = new DatabaseService(preUpgradeBackup).OpenConnection())
         using (var command = backupConnection.CreateCommand())
         {
@@ -203,12 +247,12 @@ public sealed class DatabaseServiceTests
             Assert.Equal("迁移演练项目", command.ExecuteScalar());
         }
 
-        // 第 4 步：老程序（只认到 v1）必须拒绝打开 v2 库，而不是硬着头皮读写。
+        // 第 4 步：老程序（只认到 v2）必须拒绝打开 v3 库，而不是硬着头皮读写。
         var stale = new DatabaseService(db.DatabasePath, db.BackupDirectory);
         var error = Assert.Throws<InvalidOperationException>(() => stale.Initialize());
-        Assert.Contains("2", error.Message);
+        Assert.Contains("3", error.Message);
 
-        // 第 5 步：v2 库里老数据原样保留。
+        // 第 5 步：v3 库里老数据原样保留。
         using (var connection = db.Service.OpenConnection())
         using (var command = connection.CreateCommand())
         {

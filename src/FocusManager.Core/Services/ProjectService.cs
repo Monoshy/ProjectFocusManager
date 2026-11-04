@@ -240,6 +240,12 @@ public sealed class ProjectService
             transaction,
             ("$id", projectId));
 
+        // 项目挂了哪些辅助程序，也跟着一起清掉（数据库本身也配了级联，这里显式写一遍）。
+        connection.Execute(
+            "DELETE FROM ProjectApplications WHERE ProjectId = $id;",
+            transaction,
+            ("$id", projectId));
+
         var affected = connection.Execute(
             "DELETE FROM Projects WHERE Id = $id;",
             transaction,

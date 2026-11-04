@@ -131,7 +131,7 @@ cmd //c start "" "src\FocusManager.App\bin\Debug\net10.0-windows\ProjectFocusMan
 ## 测试
 
 ```bash
-dotnet test FocusManager.slnx -c Debug     # 178 项，约 1 秒
+dotnet test FocusManager.slnx -c Debug     # 220 项，约 1 秒
 ```
 
 覆盖的是 Core 里的业务逻辑：计时（含改系统时间、冻结、心跳分段）、会话（暂停/恢复/异常退出恢复）、
@@ -145,7 +145,7 @@ dotnet test FocusManager.slnx -c Debug     # 178 项，约 1 秒
 1. **托盘图标在 Windows 11 上会被收进「隐藏的图标」溢出区**，程序本身注册是成功的（启动日志有「系统托盘已就绪」），
    但无法用自动化点击验证右键菜单，需要人工点开 `^` 确认。
 2. **Debug 构建主进程占用 147–162 MB**，高于最初的设计设想；Release 基线还没测（见 [内存测试结果.md](docs/内存测试结果.md)）。
-3. **还没有安装包**：目前只有 `bin\Debug` 下的可执行文件，Velopack 打包与自包含发布放在后续阶段。
+3. **安装包只有 x64**：`dist\Installer-traditional\ProjectFocusManager-1.1.0-Setup.exe`（NSIS 向导式，可自选安装路径）与 `dist\win-x64\`（自包含目录）。没有 ARM64 包，也没有自动更新。
 4. 高 DPI、多显示器尚未实测。
 5. 界面层没有自动化测试：窗口、托盘、前台监听这些行为靠脚本实测，仓库里没有 UI 自动化用例。
 

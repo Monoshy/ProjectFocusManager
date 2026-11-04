@@ -18,7 +18,7 @@
 | 提交总数 | `git rev-list --count HEAD` |
 | 自动化测试 | **220 项，全部通过**（约 1 秒） |
 | 代码规模 | Core 2,987 行 + App 7,558 行 + 测试约 2,100 行 ≈ 12,700 行 |
-| 发布产物 | `dist/Installer/ProjectFocusManager-win-Setup.exe`（用户级安装包）、`dist/Installer/ProjectFocusManager-win-Portable.zip`（免安装）、`dist/win-x64/`（自包含目录，不进仓库） |
+| 发布产物 | `dist/Installer-traditional/ProjectFocusManager-1.1.0-Setup.exe`（NSIS 向导式安装包，可自选路径，v1.1.0）、`dist/Installer/ProjectFocusManager-win-Setup.exe`（v1.0.0 用户级一键安装包）、`dist/Installer/ProjectFocusManager-win-Portable.zip`（v1.0.0 免安装）、`dist/win-x64/`（自包含目录，不进仓库） |
 | 数据位置 | 正式版：`%LOCALAPPDATA%\ProjectFocusManager\data\focus.db`；三级回退见 `docs/数据库说明.md` |
 
 **最短上手路径**（Windows，已有 .NET SDK 的情况）：
